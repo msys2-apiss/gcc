@@ -3558,7 +3558,7 @@ get_base_reg_or_constant (rtx exp)
     or `cond ? z : -1`.
   */
 
-static int
+static bool
 noce_try_cond_arith (struct noce_if_info *if_info)
 {
   rtx target, a, b, a_op0, a_op1, outer_a;
@@ -5930,7 +5930,7 @@ block_jumps_and_fallthru (basic_block cur_bb, basic_block target_bb)
 	return -1;
     }
 
-  if ((jump_p & fallthru_p) == 0)
+  if (!jump_p || !fallthru_p)
     return -1;
 
   /* Don't allow calls in the block, since this is used to group && and ||
