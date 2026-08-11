@@ -3687,7 +3687,7 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
 
 /* Optimize (a CMP b) &| (a CMP b)
    using the helper combine_comparisons function.  */
-(for bitop (bit_and bit_ior bit_xor ne eq)
+(for bitop (bit_and bit_ior bit_xor simple_comparison)
  (for cmp1 (tcc_comparison)
   (for cmp2 (tcc_comparison)
    (simplify

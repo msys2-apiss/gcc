@@ -3016,6 +3016,26 @@ combine_comparisons (enum tree_code code, enum tree_code lcode,
       compcode = ~(lcompcode ^ rcompcode);
       break;
 
+    //`bool0 < bool1` is `!bool0 & bool1`
+    case LT_EXPR:
+      compcode = ~lcompcode & rcompcode;
+      break;
+
+    //`bool0 > bool1` is `bool0 & !bool1`
+    case GT_EXPR:
+      compcode = lcompcode & ~rcompcode;
+      break;
+
+    // `bool0 <= bool1` as !bool0 | bool1
+    case LE_EXPR:
+      compcode = ~lcompcode | rcompcode;
+      break;
+
+    //`bool0 >= bool1` is `bool0 | !bool1`
+    case GE_EXPR:
+      compcode = lcompcode | ~rcompcode;
+      break;
+
     default:
       return ERROR_MARK;
     }
