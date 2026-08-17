@@ -4003,20 +4003,20 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
 (for bitop (bit_and bit_ior)
  (for cmp1 (tcc_comparison)
   (for cmp2 (tcc_comparison)
-   (for rcmp (tcc_comparison)
-    (simplify
-     (bitop (cmp1 @0 @1) (cmp2 @0 @1))
-     (with {
-       tree_code rescode;
-       tree res;
-       bool honor_nans = HONOR_NANS (@0);
-       rescode = combine_comparisons (bitop, cmp1, cmp2,
-				      type, honor_nans, &res);
+   (simplify
+    (bitop (cmp1 @0 @1) (cmp2 @0 @1))
+    (with rescmpcode (tcc_comparison)
+      {
+        tree_code rescmpcode;
+        tree res;
+        bool honor_nans = HONOR_NANS (@0);
+        rescmpcode = combine_comparisons (bitop, cmp1, cmp2,
+					  type, honor_nans, &res);
       }
-      (if (rescode == INTEGER_CST)
-       { res; }
-       (if (rescode == rcmp)
-        (rcmp @0 @1)))))))))
+     (if (rescmpcode == INTEGER_CST)
+      { res; }
+      (if (TREE_CODE_CLASS (rescmpcode) == tcc_comparison)
+       (rescmpcode @0 @1))))))))
 
 /* (type)([0,1]@a != 0) -> (type)a
    (type)([0,1]@a == 1) -> (type)a
@@ -7827,8 +7827,6 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
    operator using invert_tree_comparison we have to simulate
    that with expression code iteration.  */
 (for cmp (tcc_comparison)
-     icmp (inverted_tcc_comparison)
-     ncmp (inverted_tcc_comparison_with_nans)
  /* Ideally we'd like to combine the following two patterns
     and handle some more cases by using
       (logical_inverted_value (cmp @0 @1))
@@ -7839,39 +7837,38 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
   (if (VECTOR_TYPE_P (type)
        || (INTEGRAL_TYPE_P (type) && TYPE_PRECISION (type) == 1))
    /* Comparison inversion may be impossible for trapping math,
-      invert_tree_comparison will tell us.  But we can't use
-      a computed operator in the replacement tree thus we have
-      to play the trick below.  */
-   (with { enum tree_code ic = invert_tree_comparison
-             (cmp, HONOR_NANS (@0)); }
-    (if (ic == icmp)
-     (icmp @0 @1)
-     (if (ic == ncmp)
-      (ncmp @0 @1))))))
+      invert_tree_comparison will tell us.  */
+   (with rescmpcode (tcc_comparison)
+     {
+       enum tree_code rescmpcode;
+       rescmpcode = invert_tree_comparison (cmp, HONOR_NANS (@0));
+     }
+    (if (TREE_CODE_CLASS (rescmpcode) == tcc_comparison)
+     (rescmpcode @0 @1)))))
  (simplify
   (bit_xor (cmp @0 @1) integer_truep)
-  (with { enum tree_code ic = invert_tree_comparison
-            (cmp, HONOR_NANS (@0)); }
-   (if (ic == icmp)
-    (icmp @0 @1)
-    (if (ic == ncmp)
-     (ncmp @0 @1)))))
+  (with rescmpcode (tcc_comparison)
+     {
+       enum tree_code rescmpcode;
+       rescmpcode = invert_tree_comparison (cmp, HONOR_NANS (@0));
+     }
+    (if (TREE_CODE_CLASS (rescmpcode) == tcc_comparison)
+     (rescmpcode @0 @1))))
  /* ((cast)cmp) - 1 -> -(cast)icmp . */
  (simplify
   (plus (convert? (cmp@2 @0 @1)) integer_minus_onep)
   (if (TYPE_PRECISION (type) > 1
        && INTEGRAL_TYPE_P (TREE_TYPE (@2)) && TYPE_PRECISION (TREE_TYPE (@2)) == 1)
    /* Comparison inversion may be impossible for trapping math,
-      invert_tree_comparison will tell us.  But we can't use
-      a computed operator in the replacement tree thus we have
-      to play the trick below.  */
-   (with { enum tree_code ic = invert_tree_comparison
-             (cmp, HONOR_NANS (@0));
-           tree cmptype = TREE_TYPE (@2); }
-    (if (ic == icmp)
-     (negate (convert (icmp:cmptype @0 @1)))
-     (if (ic == ncmp)
-      (negate (convert (ncmp:cmptype @0 @1))))))))
+      invert_tree_comparison will tell us.  */
+   (with rescmpcode (tcc_comparison)
+     {
+       enum tree_code rescmpcode;
+       rescmpcode = invert_tree_comparison (cmp, HONOR_NANS (@0));
+       tree cmptype = TREE_TYPE (@2);
+     }
+    (if (TREE_CODE_CLASS (rescmpcode) == tcc_comparison)
+     (negate (convert (rescmpcode:cmptype @0 @1)))))))
  /* The following bits are handled by fold_binary_op_with_conditional_arg.  */
  (simplify
   (ne (cmp@2 @0 @1) integer_zerop)
@@ -7884,21 +7881,23 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
  (simplify
   (ne (cmp@2 @0 @1) integer_truep)
   (if (types_match (type, TREE_TYPE (@2)))
-   (with { enum tree_code ic = invert_tree_comparison
-	     (cmp, HONOR_NANS (@0)); }
-    (if (ic == icmp)
-     (icmp @0 @1)
-     (if (ic == ncmp)
-      (ncmp @0 @1))))))
+   (with rescmpcode (tcc_comparison)
+     {
+       enum tree_code rescmpcode;
+       rescmpcode = invert_tree_comparison (cmp, HONOR_NANS (@0));
+     }
+    (if (TREE_CODE_CLASS (rescmpcode) == tcc_comparison)
+     (rescmpcode @0 @1)))))
  (simplify
   (eq (cmp@2 @0 @1) integer_zerop)
   (if (types_match (type, TREE_TYPE (@2)))
-   (with { enum tree_code ic = invert_tree_comparison
-	     (cmp, HONOR_NANS (@0)); }
-    (if (ic == icmp)
-     (icmp @0 @1)
-     (if (ic == ncmp)
-      (ncmp @0 @1)))))))
+   (with rescmpcode (tcc_comparison)
+     {
+       enum tree_code rescmpcode;
+       rescmpcode = invert_tree_comparison (cmp, HONOR_NANS (@0));
+     }
+    (if (TREE_CODE_CLASS (rescmpcode) == tcc_comparison)
+     (rescmpcode @0 @1))))))
 
 /* Transform comparisons of the form X - Y CMP 0 to X CMP Y.
    ??? The transformation is valid for the other operators if overflow
