@@ -1608,8 +1608,6 @@ cdftext::open_input( const char filename[] ) {
     dbgmsg( "could not open '%s': %s", filename, xstrerror(erc) );
   }
 
-  cbl_message(LexInputN, "opening %s for input", filename);
-
   return fd;
 }
 
@@ -1869,6 +1867,24 @@ cobol_set_indicator_column( int column ) {
   dbgmsg("%s: format now %s", __func__, local.description());
 }
 
+static inline void
+output_segment(const char *beg, const char *end,
+               std::ostream_iterator<char> ofs )
+{
+#if 1
+  std::copy(beg, end, ofs);
+#else
+  // Replace each tab with 8 spaces.
+  for (auto p = beg; p < end; ++p) {
+    if (*p == '\t') {
+      std::generate_n(ofs, 8, [](){ return ' '; });
+      continue;
+    } 
+    *ofs = *p;
+  }
+#endif
+}
+
 void
 cdftext::output_push_directive( const char filename[],
                                std::ostream_iterator<char>& ofs )
@@ -1959,7 +1975,7 @@ cdftext::process_file( filespan_t mfile, int output,
       copy.mfile = free_form_reference_format( copy.in, source_format );
 
       if( copied.partial_line.size() ) {
-        std::copy(copied.partial_line.p, copied.partial_line.pend, ofs);
+        output_segment(copied.partial_line.p, copied.partial_line.pend, ofs);
       }
       out.flush();
 
@@ -1997,14 +2013,14 @@ cdftext::process_file( filespan_t mfile, int output,
                     []( char ch ) { return ch == '\n'; } );
     }
     if( replace_directives.empty() ) {
-      std::copy(mfile.cur, mfile.eol, ofs);
+      output_segment(mfile.cur, mfile.eol, ofs);
       continue; // No active REPLACE directive.
     }
 
     std::list<span_t> segments = segment_line(mfile);
 
     for( const auto& segment : segments ) {
-      std::copy(segment.p, segment.pend, ofs);
+      output_segment(segment.p, segment.pend, ofs);
     }
 
     out.flush();
@@ -2012,7 +2028,7 @@ cdftext::process_file( filespan_t mfile, int output,
   // end of file
   if( !second_pass && --nfiles ) {
     static const char file_pop[] = "\f#FILE POP\f";
-    std::copy(file_pop, file_pop + strlen(file_pop), ofs);
+    output_segment(file_pop, file_pop + strlen(file_pop), ofs);
     out.flush();
   }
   if( !included_files.empty() ) { --nfiles; };
