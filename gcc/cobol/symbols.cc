@@ -1642,7 +1642,8 @@ field_str( const cbl_field_t *field ) {
     }
   } else {
     init = "NULL";
-    if( field->type == FldSwitch ) {
+    if( field->type == FldSwitch
+     && field->data.etc_type == cbl_field_data_t::upsi_e ) {
       init = xasprintf("0x%02x", field->data.upsi_mask_of()->value);
     }
   }

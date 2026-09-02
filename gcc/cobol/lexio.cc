@@ -81,9 +81,8 @@ source_format_t::indicated( char *bol, const char *eol, char ch ) {
   auto ind = bol + left_margin();
   if( eol <= ind ) return NULL; // left margin would be after end of line
   // If TAB is in the line-number region, nothing is in the indicator column.
-  bool has_tab = std::any_of(bol, ind,
-                             [](const char ch) { return ch == '\t'; } );
-  if( has_tab ) return NULL;
+  auto ptab = std::find(bol, ind, '\t');
+  if( ptab != ind) return ptab;
   if( (bol += left_margin()) > eol ) return NULL;
   return ch == '\0' || ch == *bol? bol : NULL;
 }
@@ -1765,8 +1764,8 @@ cdftext::free_form_reference_format( int input,
 
     if( mfile.is_blank_line() ) continue;
 
-    char *indcol = format.top().indicated(mfile.cur, mfile.eol); // true only for fixed
-    //                                              // format
+    // indcol is true only for fixed format
+    char *indcol = format.top().indicated(mfile.cur, mfile.eol); 
 
     if( format.top().is_fixed() && !indcol ) { // short line
       erase_source(mfile.cur, mfile.eol);
@@ -1782,7 +1781,7 @@ cdftext::free_form_reference_format( int input,
         }
       }
 
-      switch( TOUPPER(*indcol) ) {
+      switch(*indcol) {
       case '-':
         gcc_assert(0 < current.line.size());
         /*
@@ -1805,8 +1804,10 @@ cdftext::free_form_reference_format( int input,
         }
         gcc_assert( ! mfile.line_contains_nul() );
         continue;
+      case TAB:
       case SPACE:
         break;
+      case 'd':
       case 'D':
         /*
          * Pass the D to the lexer as 0x8D, because WITH DEBUGGING MODE is

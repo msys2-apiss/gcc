@@ -299,6 +299,8 @@ PROGRAM-ID{OSPC}{DOTSEP}?	{ yy_push_state(ident_state);
 <comment_entries>{
   (ENVIRONMENT|DATA|PROCEDURE){SPC}DIVISION  { myless(0); yy_pop_state(); }
   {COMMENTARY}.*
+  [[:blank:]]+
+  [[:graph:]]+ 
   {BLANK_EOL}
 }
 

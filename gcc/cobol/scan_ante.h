@@ -1177,11 +1177,16 @@ symbol_exists( const char name[] ) {
     auto names = teed_up_names();
     names.push_front(name);
     auto found = symbol_find( PROGRAM, names, false);
-    return found.second? found.first : nullptr;
+    if( found.second ) return found.first;
+    // try again with just one name in case of e.g. FldClass
+    names.clear();
+    names.push_front(name);
+    found = symbol_find( PROGRAM, names, false);
+    if( found.second ) return found.first;
   }
   /*
-   * Before data division has been defined and the cache populated, search the
-   * symbol table in case of named literal.
+   * Before data division has been defined and the cache populated, or if the
+   * map search failes, search the symbol table in case of named literal.
    */  
   symbol_elem_t *e = symbol_field( PROGRAM, 0, name );
   return e;
