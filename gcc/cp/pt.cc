@@ -12962,6 +12962,7 @@ instantiate_class_template (tree type)
   maybe_diagnose_erroneous_template (t ? TI_TEMPLATE (t) : templ);
 
   int saved_unevaluated_operand = cp_unevaluated_operand;
+  int saved_unevaluated_typeid_cutoff = cp_unevaluated_typeid_cutoff;
   int saved_inhibit_evaluation_warnings = c_inhibit_evaluation_warnings;
 
   fn_context = decl_function_context (TYPE_MAIN_DECL (type));
@@ -12973,6 +12974,7 @@ instantiate_class_template (tree type)
   else
     {
       cp_unevaluated_operand = 0;
+      cp_unevaluated_typeid_cutoff = 0;
       c_inhibit_evaluation_warnings = 0;
     }
 
@@ -13390,6 +13392,7 @@ instantiate_class_template (tree type)
       /* Restore these before substituting into the lambda capture
 	 initializers.  */
       cp_unevaluated_operand = saved_unevaluated_operand;
+      cp_unevaluated_typeid_cutoff = saved_unevaluated_typeid_cutoff;
       c_inhibit_evaluation_warnings = saved_inhibit_evaluation_warnings;
     }
 
@@ -23098,7 +23101,7 @@ tsubst_expr (tree t, tree args, tsubst_flags_t complain, tree in_decl)
 	    tree operand;
 	    tree uneval;
 	    {
-	      cp_unevaluated u;
+	      cp_unevaluated u (/* typeid_operand= */ true);
 	      uneval = RECUR (operand_0);
 	    }
 	    /* If we're already within an unevaluated operand, everything
