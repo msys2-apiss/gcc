@@ -205,7 +205,11 @@ path_range_query::reset_path (const vec<basic_block> &path,
 			      const bitmap_head *dependencies)
 {
   gcc_checking_assert (path.length () > 1);
-  m_path = path.copy ();
+
+  // Use truncate/safe_splice instead of copy() to avoid repeated mallocs here.
+  m_path.truncate (0);
+  m_path.safe_splice (path);
+
   m_pos = m_path.length () - 1;
   m_undefined_path = false;
   m_cache.clear ();
@@ -576,11 +580,10 @@ path_range_query::compute_ranges (const bitmap_head *dependencies)
   else
     compute_exit_dependencies (m_exit_dependencies);
 
-  if (m_resolve)
-    {
-      path_oracle *p = get_path_oracle ();
-      p->reset_path (&(m_ranger.relation ()));
-    }
+  // The oracle carries state from any previously solved path, so it has
+  // to be reset even in non-resolving mode.
+  path_oracle *p = get_path_oracle ();
+  p->reset_path (&(m_ranger.relation ()));
 
   if (DEBUG_SOLVER)
     {

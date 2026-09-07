@@ -135,6 +135,8 @@ private:
   function *m_fun;
   // Ranger for the path solver.
   gimple_ranger *m_ranger;
+  // Path solver, reused across all candidate paths.
+  path_range_query *m_solver;
   unsigned m_flags;
   // Set to TRUE for the first of each thread[12] pass or the first of
   // each threadfull[12] pass.  This is used to differentiate between
@@ -163,10 +165,12 @@ back_threader::back_threader (function *fun, unsigned flags, bool first)
     mark_dfs_back_edges ();
 
   m_ranger = new gimple_ranger;
+  m_solver = new path_range_query (*m_ranger, flags & BT_RESOLVE);
 }
 
 back_threader::~back_threader ()
 {
+  delete m_solver;
   delete m_ranger;
   loop_optimizer_finalize ();
 }
@@ -300,9 +304,8 @@ back_threader::find_taken_edge_goto (const vec<basic_block> &path,
   if (TREE_CODE (dest) == SSA_NAME)
     {
       prange r;
-      path_range_query solver (*m_ranger, path, m_imports,
-			       m_flags & BT_RESOLVE);
-      if (!solver.range_of_expr (r, dest, stmt))
+      m_solver->reset_path (path, m_imports);
+      if (!m_solver->range_of_expr (r, dest, stmt))
 	return NULL;
 
       if (r.undefined_p ())
@@ -328,8 +331,8 @@ back_threader::find_taken_edge_switch (const vec<basic_block> &path,
   tree name = gimple_switch_index (sw);
   int_range_max r;
 
-  path_range_query solver (*m_ranger, path, m_imports, m_flags & BT_RESOLVE);
-  solver.range_of_expr (r, name, sw);
+  m_solver->reset_path (path, m_imports);
+  m_solver->range_of_expr (r, name, sw);
 
   if (r.undefined_p ())
     return UNREACHABLE_EDGE;
@@ -352,10 +355,10 @@ back_threader::find_taken_edge_cond (const vec<basic_block> &path,
 {
   int_range_max r;
 
-  path_range_query solver (*m_ranger, path, m_imports, m_flags & BT_RESOLVE);
-  solver.range_of_stmt (r, cond);
+  m_solver->reset_path (path, m_imports);
+  m_solver->range_of_stmt (r, cond);
 
-  if (solver.unreachable_path_p ())
+  if (m_solver->unreachable_path_p ())
     return UNREACHABLE_EDGE;
 
   int_range<2> true_range = range_true ();
