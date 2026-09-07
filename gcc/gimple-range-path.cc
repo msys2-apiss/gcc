@@ -465,17 +465,16 @@ path_range_query::compute_ranges_in_block (basic_block bb)
 void
 path_range_query::adjust_for_non_null_uses (basic_block bb)
 {
+  // If there are no pointer exit dependencies with an inferred range, there's
+  // nothing to do.
+  if (m_pointer_exit_dependencies.is_empty ()
+      || !infer_oracle ().has_range_p (bb))
+    return;
+
   prange r;
-  bitmap_iterator bi;
-  unsigned i;
 
-  EXECUTE_IF_SET_IN_BITMAP (m_exit_dependencies, 0, i, bi)
+  for (tree name : m_pointer_exit_dependencies)
     {
-      tree name = ssa_name (i);
-
-      if (!POINTER_TYPE_P (TREE_TYPE (name)))
-	continue;
-
       if (get_cache (r, name))
 	{
 	  if (!r.contains_zero_p ())
@@ -584,6 +583,25 @@ path_range_query::compute_ranges (const bitmap_head *dependencies)
   // to be reset even in non-resolving mode.
   path_oracle *p = get_path_oracle ();
   p->reset_path (&(m_ranger.relation ()));
+
+  // Collect the pointer exit dependencies once per path.
+  m_pointer_exit_dependencies.truncate (0);
+  {
+    bitmap_iterator bi;
+    unsigned i;
+    EXECUTE_IF_SET_IN_BITMAP (m_exit_dependencies, 0, i, bi)
+      {
+	tree name = ssa_name (i);
+	if (POINTER_TYPE_P (TREE_TYPE (name)))
+	  {
+	    // Querying the infer oracle here is what populates its
+	    // per-block summaries, so that adjust_for_non_null_uses can
+	    // skip a block with no inferred range in it at all.
+	    infer_oracle ().has_range_p (entry_bb (), name);
+	    m_pointer_exit_dependencies.safe_push (name);
+	  }
+      }
+  }
 
   if (DEBUG_SOLVER)
     {
