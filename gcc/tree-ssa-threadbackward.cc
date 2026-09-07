@@ -120,8 +120,8 @@ private:
 
   // Current path being analyzed.
   auto_vec<basic_block> m_path;
-  // Hash to mark visited BBs while analyzing a path.
-  hash_set<basic_block> m_visited_bbs;
+  // Flag to mark visited BBs while analyzing a path.
+  auto_bb_flag m_visited_flag;
   // The set of SSA names, any of which could potentially change the
   // value of the final conditional in a path.
   auto_bitmap m_imports;
@@ -149,7 +149,7 @@ private:
 const edge back_threader::UNREACHABLE_EDGE = (edge) -1;
 
 back_threader::back_threader (function *fun, unsigned flags, bool first)
-  : m_first (first)
+  : m_visited_flag (fun), m_first (first)
 {
   if (flags & BT_SPEED)
     loop_optimizer_init (LOOPS_HAVE_PREHEADERS | LOOPS_HAVE_SIMPLE_LATCHES);
@@ -386,8 +386,10 @@ back_threader::find_paths_to_names (basic_block bb, bitmap interesting,
 				    unsigned overall_paths,
 				    back_threader_profitability &profit)
 {
-  if (m_visited_bbs.add (bb))
+  if (bb->flags & m_visited_flag)
     return;
+
+  bb->flags |= m_visited_flag;
 
   m_path.safe_push (bb);
 
@@ -527,7 +529,7 @@ back_threader::find_paths_to_names (basic_block bb, bitmap interesting,
 
   // Reset things to their original state.
   m_path.pop ();
-  m_visited_bbs.remove (bb);
+  bb->flags &= ~m_visited_flag;
 }
 
 // Search backwards from BB looking for paths where the final
@@ -551,7 +553,6 @@ back_threader::maybe_thread_block (basic_block bb)
     return;
 
   m_last_stmt = stmt;
-  m_visited_bbs.empty ();
   m_path.truncate (0);
 
   // We compute imports of the path during discovery starting
