@@ -2116,6 +2116,16 @@ DEFINE_INT_AND_FLOAT_ROUND_FN (RINT)
 	 (bit_and (bit_and:c@3 @0 @1) integer_onep))
  (plus @3 (rshift (bit_xor @0 @1) @2)))
 
+/* ((x >> 1) + (y >> 1)) + ((x | y) & 1) -> (x | y) - ((x ^ y) >> 1).
+   The rounded-up dual of the rule above: x + y is 2 * (x | y) - (x ^ y), so
+   the average rounded towards +inf is (x | y) - ((x ^ y) >> 1), again four
+   operations instead of six.  This is the form used by the rounding
+   motion-compensation averages in media codecs.  */
+(simplify
+ (plus:c (plus (rshift @0 integer_onep@2) (rshift @1 @2))
+	 (bit_and (bit_ior:c@3 @0 @1) integer_onep))
+ (minus @3 (rshift (bit_xor @0 @1) @2)))
+
 /* (x & y) + (x | y) -> x + y */
 (simplify
  (plus:c (bit_and @0 @1) (bit_ior @0 @1))
